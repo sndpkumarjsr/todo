@@ -4,7 +4,6 @@ import com.todo.entity.User;
 import com.todo.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.Optional;
 
 @Service

@@ -11,11 +11,16 @@ import java.time.LocalDate;
 public class TaskMapper {
 
     public Task toTask(TaskDto dto){
-        return new Task(dto.title(), dto.description(),dto.status(),dto.priority());
+        return  new Task().builder().
+                title(dto.title()).
+                description(dto.description()).
+                status(dto.status()).
+                priority(dto.priority()).
+                build();
     }
 
     public TaskResponseDto toTaskResponseDto(Task task){
-        return new TaskResponseDto(task.getId(),task.getTitle(), task.getDescription(), task.getStatus(),task.getPriority(), task.getCreatedAt().toLocalDate());
+        return new TaskResponseDto(task.getId(),task.getTitle(), task.getDescription(), task.getStatus(),task.getPriority(), task.getCreatedAt().toLocalDate(),task.getUser().getEmail());
     }
 
 }

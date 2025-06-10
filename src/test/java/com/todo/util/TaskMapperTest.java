@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
 
-import static org.junit.jupiter.api.Assertions.*;
 
 class TaskMapperTest {
 
@@ -35,7 +34,7 @@ class TaskMapperTest {
 
     @Test
     public void checkToTaskResponseDto(){
-        Task task = new Task("Home Work","Math and Science",Status.PENDING, Priority.MEDIUM);
+        Task task = new Task().builder().title("Home Work").description("Math and Science").status(Status.PENDING).priority(Priority.MEDIUM).build();
         task.setId(1);
         task.setCreatedAt(LocalDateTime.now());
 

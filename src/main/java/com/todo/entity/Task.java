@@ -1,11 +1,20 @@
 package com.todo.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
-
+@EqualsAndHashCode(callSuper = true)
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@SuperBuilder
 @Entity
-public class Task {
+public class Task extends BaseEntity {
     @Id
     @GeneratedValue
     private Integer id;
@@ -17,82 +26,6 @@ public class Task {
     @Enumerated(EnumType.STRING)
     private Priority priority;
     private boolean isActive;
-    @Column(updatable = false)
-    private LocalDateTime createdAt;
-    @Column(insertable = false)
-    private LocalDateTime modifiedAt;
-
-    public Task() {
-    }
-
-    public Task(String title, String description, Status status, Priority priority) {
-        this.title = title;
-        this.description = description;
-        this.status = status;
-        this.priority = priority;
-    }
-
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public Status getStatus() {
-        return status;
-    }
-
-    public void setStatus(Status status) {
-        this.status = status;
-    }
-
-    public Priority getPriority() {
-        return priority;
-    }
-
-    public void setPriority(Priority priority) {
-        this.priority = priority;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public LocalDateTime getModifiedAt() {
-        return modifiedAt;
-    }
-
-    public void setModifiedAt(LocalDateTime modifiedAt) {
-        this.modifiedAt = modifiedAt;
-    }
-
-    public boolean isActive() {
-        return isActive;
-    }
-
-    public void setActive(boolean active) {
-        isActive = active;
-    }
+    @ManyToOne
+    private User user;
 }

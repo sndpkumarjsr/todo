@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
+import java.io.Serializable;
 import java.time.LocalDate;
 
 public record TaskDto(
@@ -25,6 +26,6 @@ public record TaskDto(
                 @NotEmpty(message = "User Email must required")
                 @Email
         String userEmail
-) {
+) implements Serializable {
 
 }

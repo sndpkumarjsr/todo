@@ -4,6 +4,7 @@ import com.todo.entity.Priority;
 import com.todo.entity.Status;
 import com.todo.entity.User;
 
+import java.io.Serializable;
 import java.time.LocalDate;
 
 public record TaskResponseDto(
@@ -14,5 +15,5 @@ public record TaskResponseDto(
         Priority priority,
         LocalDate createdAt,
         String user
-) {
+) implements Serializable {
 }

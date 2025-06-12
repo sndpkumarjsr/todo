@@ -1,5 +1,6 @@
 package com.todo.controller;
 
+import com.todo.dto.UserDto;
 import com.todo.entity.User;
 import com.todo.repository.UserRepository;
 import com.todo.service.UserService;
@@ -25,17 +26,17 @@ public class UserController {
     }
 
     @PostMapping
-    public ResponseEntity<?> addNewUser(@Valid  @RequestBody User user){
-        var savedUser = service.add(user);
+    public ResponseEntity<?> addNewUser(@Valid  @RequestBody UserDto dto){
+        var savedUser = service.add(dto);
         if(savedUser == null)
             return new ResponseEntity<>("Email already exits",HttpStatus.BAD_REQUEST);
         return new ResponseEntity<>(savedUser,HttpStatus.CREATED);
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody User user) {
-        if (service.authenticate(user.getEmail(), user.getPassword())) {
-            String token = jwtUtil.generateToken(user.getEmail());
+    public ResponseEntity<?> login(@RequestBody UserDto dto) {
+        if (service.authenticate(dto.email(), dto.password())) {
+            String token = jwtUtil.generateToken(dto.email());
             Map<String, String> response = new HashMap<>();
             response.put("token", token);
             return ResponseEntity.ok(response);

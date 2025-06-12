@@ -20,7 +20,8 @@ public class TaskMapper {
     }
 
     public TaskResponseDto toTaskResponseDto(Task task){
-        return new TaskResponseDto(task.getId(),task.getTitle(), task.getDescription(), task.getStatus(),task.getPriority(), task.getCreatedAt().toLocalDate(),task.getUser().getEmail());
+        return new TaskResponseDto(task.getId(),task.getTitle(), task.getDescription(),
+                task.getStatus(),task.getPriority(), task.getCreatedAt().toLocalDate(),task.getUser().getEmail());
     }
 
 }

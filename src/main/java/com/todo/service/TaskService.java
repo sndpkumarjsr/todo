@@ -5,8 +5,12 @@ import com.todo.dto.TaskResponseDto;
 import com.todo.entity.Priority;
 import com.todo.entity.Status;
 import com.todo.entity.Task;
+import com.todo.entity.User;
 import com.todo.repository.TaskRepository;
+import com.todo.repository.UserRepository;
 import com.todo.util.TaskMapper;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -19,10 +23,12 @@ public class TaskService {
 
     private final TaskRepository repository;
     private final TaskMapper mapper;
+    private final UserRepository userRepository;
 
-    public TaskService(TaskRepository repository, TaskMapper mapper) {
+    public TaskService(TaskRepository repository, TaskMapper mapper, UserRepository userRepository) {
         this.repository = repository;
         this.mapper = mapper;
+        this.userRepository = userRepository;
     }
 
     public List<TaskResponseDto> getAll(){
@@ -32,19 +38,26 @@ public class TaskService {
                 .collect(Collectors.toList());
     }
 
-
+    @CachePut(value = "tasks", key = "#dto.userEmail")
     public TaskResponseDto add(TaskDto dto){
         Task task = mapper.toTask(dto);
-        task.setCreatedAt(LocalDateTime.now());
-        task.setActive(true);
+        Optional<User> userOpt =  userRepository.findByEmail(dto.userEmail());
+        if(userOpt.isPresent()) {
+            User user = userOpt.get();
+            task.setUser(user);
+            task.setCreatedAt(LocalDateTime.now());
+            task.setActive(true);
 
-        Task saveTask = repository.save(task);
-        return mapper.toTaskResponseDto(saveTask);
+            Task saveTask = repository.save(task);
+            return mapper.toTaskResponseDto(saveTask);
+        }
+        return null;
     }
-
+    @CachePut(value = "tasks", key = "#dto.userEmail")
     public TaskResponseDto update(Integer taskId,TaskDto dto){
         Optional<Task> taskOpt = repository.findById(taskId);
-        if(taskOpt.isPresent() && taskOpt.get().isActive()){
+        Optional<User> userOpt = userRepository.findByEmail(dto.userEmail());
+        if(taskOpt.isPresent() && taskOpt.get().isActive() && userOpt.isPresent()){
             Task task = taskOpt.get();
             task.setPriority(dto.priority());
             task.setTitle(dto.title());
@@ -69,14 +82,14 @@ public class TaskService {
         }
         return false;
     }
-
+    @Cacheable(value = "tasks",key = "#status")
     public List<TaskResponseDto> getByStatus(Status status){
         return repository.findByStatus(status)
                 .stream().filter(i->i.isActive())
                 .map(mapper::toTaskResponseDto)
                 .collect(Collectors.toList());
     }
-
+    @Cacheable(value = "tasks",key = "#priority")
     public List<TaskResponseDto> getByPriority(Priority priority){
         return repository.findByPriority(priority)
                 .stream().filter(i->i.isActive())

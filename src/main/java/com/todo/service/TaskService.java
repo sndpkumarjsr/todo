@@ -11,7 +11,9 @@ import com.todo.repository.UserRepository;
 import com.todo.util.TaskMapper;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -31,6 +33,7 @@ public class TaskService {
         this.userRepository = userRepository;
     }
 
+
     public List<TaskResponseDto> getAll(){
         return repository.findAll()
                 .stream().filter(i->i.isActive())
@@ -39,6 +42,7 @@ public class TaskService {
     }
 
     @CachePut(value = "tasks", key = "#dto.userEmail")
+    @Transactional
     public TaskResponseDto add(TaskDto dto){
         Task task = mapper.toTask(dto);
         Optional<User> userOpt =  userRepository.findByEmail(dto.userEmail());
@@ -54,10 +58,11 @@ public class TaskService {
         return null;
     }
     @CachePut(value = "tasks", key = "#dto.userEmail")
+    @Transactional
     public TaskResponseDto update(Integer taskId,TaskDto dto){
         Optional<Task> taskOpt = repository.findById(taskId);
-        Optional<User> userOpt = userRepository.findByEmail(dto.userEmail());
-        if(taskOpt.isPresent() && taskOpt.get().isActive() && userOpt.isPresent()){
+//        Optional<User> userOpt = userRepository.findByEmail(dto.userEmail());
+        if(taskOpt.isPresent() && taskOpt.get().isActive()){
             Task task = taskOpt.get();
             task.setPriority(dto.priority());
             task.setTitle(dto.title());
@@ -71,6 +76,7 @@ public class TaskService {
         return null;
     }
 
+    @Transactional
     public boolean delete(Integer taskId){
         Optional<Task> taskOpt = repository.findById(taskId);
         if(taskOpt.isPresent()){

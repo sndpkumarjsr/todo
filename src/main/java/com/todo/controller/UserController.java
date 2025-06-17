@@ -2,10 +2,13 @@ package com.todo.controller;
 
 import com.todo.dto.UserDto;
 import com.todo.entity.User;
+import com.todo.exception.UserException;
 import com.todo.repository.UserRepository;
 import com.todo.service.UserService;
 import com.todo.util.JwtUtil;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,31 +20,28 @@ import java.util.Map;
 @RequestMapping("/users")
 public class UserController {
 
-    private final JwtUtil jwtUtil;
     private final UserService service;
+    private static Logger logger = LoggerFactory.getLogger(UserController.class);
 
-    public UserController(JwtUtil jwtUtil, UserService service) {
-        this.jwtUtil = jwtUtil;
+    public UserController(UserService service) {
         this.service = service;
     }
 
     @PostMapping
-    public ResponseEntity<?> addNewUser(@Valid  @RequestBody UserDto dto){
-        var savedUser = service.add(dto);
-        if(savedUser == null)
-            return new ResponseEntity<>("Email already exits",HttpStatus.BAD_REQUEST);
-        return new ResponseEntity<>(savedUser,HttpStatus.CREATED);
+    public ResponseEntity<UserDto> addNewUser(@Valid  @RequestBody UserDto dto) throws UserException {
+        logger.info("Controller : Add new User {}"+dto);
+        return new ResponseEntity<>(service.add(dto),HttpStatus.CREATED);
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody UserDto dto) {
-        if (service.authenticate(dto.email(), dto.password())) {
-            String token = jwtUtil.generateToken(dto.email());
-            Map<String, String> response = new HashMap<>();
-            response.put("token", token);
-            return ResponseEntity.ok(response);
-        } else {
-            return new ResponseEntity<>("Invalid Credentials",HttpStatus.UNAUTHORIZED);
-        }
+    public ResponseEntity<Map<String,String>> login(@Valid @RequestBody UserDto dto) throws UserException {
+        logger.info("Controller : Login by User : {}"+dto);
+        return ResponseEntity.ok(service.authenticate(dto.email(), dto.password()));
+    }
+
+    @PutMapping
+    public ResponseEntity<UserDto> update(@Valid @RequestBody UserDto dto) throws UserException{
+        logger.info("Controller : User Update of {}"+dto);
+        return new ResponseEntity<>(service.update(dto),HttpStatus.OK);
     }
 }

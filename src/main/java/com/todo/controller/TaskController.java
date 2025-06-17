@@ -4,8 +4,11 @@ import com.todo.dto.TaskDto;
 import com.todo.dto.TaskResponseDto;
 import com.todo.entity.Priority;
 import com.todo.entity.Status;
+import com.todo.exception.TaskException;
 import com.todo.service.TaskService;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,56 +20,46 @@ import java.util.List;
 public class TaskController {
 
     private final TaskService service;
+    private static Logger logger = LoggerFactory.getLogger(TaskController.class);
 
     public TaskController(TaskService service) {
         this.service = service;
     }
 
-    @GetMapping
-    public ResponseEntity<List<TaskResponseDto>> getAll(){
-        var list = service.getAll();
-        if(list.isEmpty())
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        return ResponseEntity.ok(list);
+    @GetMapping("/{email}")
+    public ResponseEntity<List<TaskResponseDto>> getAll(@PathVariable String email){
+        logger.info("Controller : Get all task of email : {}",email);
+        return ResponseEntity.ok(service.getAll(email));
     }
 
     @PostMapping
-    public ResponseEntity<?> addNewTask(@Valid @RequestBody TaskDto taskDto){
-        var response = service.add(taskDto);
-        if(response == null) return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<?> addNewTask(@Valid @RequestBody TaskDto taskDto) throws TaskException {
+        logger.info("Controller : Add Task : {}",taskDto);
+        return ResponseEntity.ok(service.add(taskDto));
     }
 
-    @PutMapping("{taskId}")
-    public ResponseEntity<?> updateTask(@PathVariable Integer taskId, @Valid @RequestBody TaskDto taskDto){
-        var response = service.update(taskId,taskDto);
-        if(response == null)
-            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
-        return ResponseEntity.ok(response);
+    @PutMapping("{taskId}/{email}")
+    public ResponseEntity<?> updateTask(@PathVariable Integer taskId,@PathVariable String email, @Valid @RequestBody TaskDto taskDto) throws TaskException{
+        logger.info("Controller : Update Task : {}",taskDto);
+        return ResponseEntity.ok(service.update(taskId,email,taskDto));
     }
 
-    @DeleteMapping("{taskId}")
-    public ResponseEntity<?> deleteTask(@PathVariable Integer taskId){
-        boolean isDeleted = service.delete(taskId);
-        if(isDeleted)
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-        return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+    @DeleteMapping("{taskId}/{email}")
+    public ResponseEntity<?> deleteTask(@PathVariable Integer taskId,@PathVariable String email){
+        logger.info("Controller : Delete Task ID : {} and Email : {}",taskId,email);
+        return (service.delete(taskId,email))? new ResponseEntity<>(HttpStatus.NO_CONTENT) : new ResponseEntity<>(HttpStatus.BAD_REQUEST);
     }
 
-    @GetMapping("/status/{status}")
-    public ResponseEntity<List<TaskResponseDto>> getByStatus(@PathVariable Status status){
-        var list = service.getByStatus(status);
-        if(list.isEmpty())
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        return ResponseEntity.ok(list);
+    @GetMapping("/status/{status}/{email}")
+    public ResponseEntity<List<TaskResponseDto>> getByStatus(@PathVariable Status status, @PathVariable String email){
+        logger.info("Controller : Get All By Status : {} and email : {}",status,email);
+        return ResponseEntity.ok(service.getByStatus(status,email));
     }
 
-    @GetMapping("/priority/{priority}")
-    public ResponseEntity<List<TaskResponseDto>> getByPriority(@PathVariable Priority priority){
-        var list = service.getByPriority(priority);
-        if(list.isEmpty())
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        return ResponseEntity.ok(list);
+    @GetMapping("/priority/{priority}/{email}")
+    public ResponseEntity<List<TaskResponseDto>> getByPriority(@PathVariable Priority priority, @PathVariable String email){
+        logger.info("Controller : Get All By Priority : {} and email : {}",priority,email);
+        return ResponseEntity.ok(service.getByPriority(priority,email));
     }
 
 }

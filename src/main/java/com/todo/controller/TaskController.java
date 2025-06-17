@@ -20,7 +20,7 @@ import java.util.List;
 public class TaskController {
 
     private final TaskService service;
-    private static Logger logger = LoggerFactory.getLogger(TaskController.class);
+    private static final Logger logger = LoggerFactory.getLogger(TaskController.class);
 
     public TaskController(TaskService service) {
         this.service = service;
@@ -28,38 +28,57 @@ public class TaskController {
 
     @GetMapping("/{email}")
     public ResponseEntity<List<TaskResponseDto>> getAll(@PathVariable String email){
-        logger.info("Controller : Get all task of email : {}",email);
-        return ResponseEntity.ok(service.getAll(email));
+        logger.info("GET /tasks/{} - Fetching all tasks for email", email);
+        List<TaskResponseDto> tasks = service.getAll(email);
+        logger.debug("Fetched {} tasks for user: {}", tasks.size(), email);
+        return ResponseEntity.ok(tasks);
     }
 
     @PostMapping
     public ResponseEntity<?> addNewTask(@Valid @RequestBody TaskDto taskDto) throws TaskException {
-        logger.info("Controller : Add Task : {}",taskDto);
-        return ResponseEntity.ok(service.add(taskDto));
+        logger.info("POST /tasks - Adding new task: {}", taskDto);
+        TaskResponseDto response = service.add(taskDto);
+        logger.debug("Task created with ID: {}", response.id());
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
     @PutMapping("{taskId}/{email}")
     public ResponseEntity<?> updateTask(@PathVariable Integer taskId,@PathVariable String email, @Valid @RequestBody TaskDto taskDto) throws TaskException{
-        logger.info("Controller : Update Task : {}",taskDto);
-        return ResponseEntity.ok(service.update(taskId,email,taskDto));
+        logger.info("PUT /tasks/{}/{} - Updating task with data: {}", taskId, email, taskDto);
+        TaskResponseDto updatedTask = service.update(taskId, email, taskDto);
+        logger.debug("Task updated with ID: {}", updatedTask.id());
+        return ResponseEntity.ok(updatedTask);
     }
 
     @DeleteMapping("{taskId}/{email}")
     public ResponseEntity<?> deleteTask(@PathVariable Integer taskId,@PathVariable String email){
-        logger.info("Controller : Delete Task ID : {} and Email : {}",taskId,email);
-        return (service.delete(taskId,email))? new ResponseEntity<>(HttpStatus.NO_CONTENT) : new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        logger.info("DELETE /tasks/{}/{} - Attempting to delete task", taskId, email);
+
+        boolean deleted = service.delete(taskId, email);
+
+        if (deleted) {
+            logger.debug("Task successfully deleted: ID={}, email={}", taskId, email);
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        } else {
+            logger.warn("Task deletion failed: ID={}, email={}", taskId, email);
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
     }
 
     @GetMapping("/status/{status}/{email}")
     public ResponseEntity<List<TaskResponseDto>> getByStatus(@PathVariable Status status, @PathVariable String email){
-        logger.info("Controller : Get All By Status : {} and email : {}",status,email);
-        return ResponseEntity.ok(service.getByStatus(status,email));
+        logger.info("GET /tasks/status/{}/{} - Fetching tasks by status", status, email);
+        List<TaskResponseDto> tasks = service.getByStatus(status, email);
+        logger.debug("Found {} tasks with status={} for user={}", tasks.size(), status, email);
+        return ResponseEntity.ok(tasks);
     }
 
     @GetMapping("/priority/{priority}/{email}")
     public ResponseEntity<List<TaskResponseDto>> getByPriority(@PathVariable Priority priority, @PathVariable String email){
-        logger.info("Controller : Get All By Priority : {} and email : {}",priority,email);
-        return ResponseEntity.ok(service.getByPriority(priority,email));
+        logger.info("GET /tasks/priority/{}/{} - Fetching tasks by priority", priority, email);
+        List<TaskResponseDto> tasks = service.getByPriority(priority, email);
+        logger.debug("Found {} tasks with priority={} for user={}", tasks.size(), priority, email);
+        return ResponseEntity.ok(tasks);
     }
 
 }

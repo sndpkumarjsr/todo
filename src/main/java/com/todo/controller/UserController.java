@@ -21,7 +21,7 @@ import java.util.Map;
 public class UserController {
 
     private final UserService service;
-    private static Logger logger = LoggerFactory.getLogger(UserController.class);
+    private static final Logger logger = LoggerFactory.getLogger(UserController.class);
 
     public UserController(UserService service) {
         this.service = service;
@@ -29,19 +29,25 @@ public class UserController {
 
     @PostMapping
     public ResponseEntity<UserDto> addNewUser(@Valid  @RequestBody UserDto dto) throws UserException {
-        logger.info("Controller : Add new User {}"+dto);
-        return new ResponseEntity<>(service.add(dto),HttpStatus.CREATED);
+        logger.info("POST /users - Adding new user with email: {}", dto.email());
+        UserDto createdUser = service.add(dto);
+        logger.debug("User created: {}", createdUser);
+        return new ResponseEntity<>(createdUser, HttpStatus.CREATED);
     }
 
     @PostMapping("/login")
     public ResponseEntity<Map<String,String>> login(@Valid @RequestBody UserDto dto) throws UserException {
-        logger.info("Controller : Login by User : {}"+dto);
-        return ResponseEntity.ok(service.authenticate(dto.email(), dto.password()));
+        logger.info("POST /users/login - Attempting login for email: {}", dto.email());
+        Map<String, String> authTokenMap = service.authenticate(dto.email(), dto.password());
+        logger.debug("Login successful, token generated for email: {}", dto.email());
+        return ResponseEntity.ok(authTokenMap);
     }
 
     @PutMapping
     public ResponseEntity<UserDto> update(@Valid @RequestBody UserDto dto) throws UserException{
-        logger.info("Controller : User Update of {}"+dto);
-        return new ResponseEntity<>(service.update(dto),HttpStatus.OK);
+        logger.info("PUT /users - Updating user with email: {}", dto.email());
+        UserDto updatedUser = service.update(dto);
+        logger.debug("User updated: {}", updatedUser);
+        return ResponseEntity.ok(updatedUser);
     }
 }

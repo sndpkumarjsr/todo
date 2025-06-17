@@ -21,7 +21,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final JwtUtil jwtUtil;
-    private static Logger logger = LoggerFactory.getLogger(UserService.class);
+    private static final Logger logger = LoggerFactory.getLogger(UserService.class);
 
     public UserService(UserRepository userRepository, UserMapper userMapper, JwtUtil jwtUtil) {
         this.userRepository = userRepository;
@@ -30,47 +30,67 @@ public class UserService {
     }
 
     public Map<String, String> authenticate(String email, String password) throws UserException {
-        logger.info("Service :- authenticate user email : {} and password : {}",email,password);
+        logger.info("Service: Authenticating user with email: {}", email);
+
         Optional<User> userOptional = userRepository.findByEmail(email);
+
         if (userOptional.isPresent()) {
             User user = userOptional.get();
-             if(user.getPassword().equals(password)){
+
+            if (user.getPassword().equals(password)) {
                 String token = jwtUtil.generateToken(email);
+                logger.debug("Authentication successful for email: {}", email);
+
                 Map<String, String> response = new HashMap<>();
                 response.put("token", token);
                 return response;
-            }else{
-                 throw new UserException("Invalid Credentials");
-             }
+            } else {
+                logger.warn("Authentication failed: Invalid password for email: {}", email);
+                throw new UserException("Invalid Credentials");
+            }
         }
-        throw  new UserException("User Not Found!!!");
+
+        logger.error("Authentication failed: User not found with email: {}", email);
+        throw new UserException("User Not Found!!!");
     }
 
     public UserDto add(UserDto dto) throws UserException{
-        logger.info("Service : Add user : {}",dto);
-        User saved = userRepository.findByEmail(dto.email()).orElse(null);
-        if(saved == null) {
-            User user = userMapper.getUser(dto);
-            user.setCreatedAt(LocalDateTime.now());
-            user.setCreatedBy(user.getEmail());
-            User savedUser = userRepository.save(user);
-            return userMapper.getUserDto(savedUser);
+        logger.info("Service: Adding new user with email: {}", dto.email());
+
+        Optional<User> existingUser = userRepository.findByEmail(dto.email());
+        if (existingUser.isPresent()) {
+            logger.warn("User creation failed: Email already exists - {}", dto.email());
+            throw new UserException("Email already exists");
         }
-        throw new UserException("Email already exits");
+
+        User user = userMapper.getUser(dto);
+        user.setCreatedAt(LocalDateTime.now());
+        user.setCreatedBy(user.getEmail());
+
+        User savedUser = userRepository.save(user);
+        logger.debug("User successfully created with ID: {}", savedUser.getId());
+
+        return userMapper.getUserDto(savedUser);
     }
 
     public UserDto update(UserDto dto) throws UserException{
-        logger.info("Service : Update user : {}",dto);
+        logger.info("Service: Updating user with email: {}", dto.email());
+
         Optional<User> userOpt = userRepository.findByEmail(dto.email());
-        if(userOpt.isPresent()){
+        if (userOpt.isPresent()) {
             User user = userOpt.get();
+
             user.setPassword(dto.password());
             user.setModifiedAt(LocalDateTime.now());
             user.setModifiedBy(dto.email());
 
-            User updateUser = userRepository.save(user);
-            return userMapper.getUserDto(updateUser);
+            User updatedUser = userRepository.save(user);
+            logger.debug("User successfully updated with ID: {}", updatedUser.getId());
+
+            return userMapper.getUserDto(updatedUser);
         }
+
+        logger.error("User update failed: User not found with email: {}", dto.email());
         throw new UserException("User Not Found!!!");
     }
 }

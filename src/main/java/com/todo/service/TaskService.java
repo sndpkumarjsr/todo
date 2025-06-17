@@ -29,7 +29,7 @@ public class TaskService {
     private final TaskRepository repository;
     private final TaskMapper mapper;
     private final UserRepository userRepository;
-    private static Logger logger = LoggerFactory.getLogger(TaskService.class);
+    private static final Logger logger = LoggerFactory.getLogger(TaskService.class);
 
     public TaskService(TaskRepository repository, TaskMapper mapper, UserRepository userRepository) {
         this.repository = repository;
@@ -39,81 +39,123 @@ public class TaskService {
 
     @Cacheable(value = "tasks", key = "#email")
     public List<TaskResponseDto> getAll(String email){
-        logger.info("Service : Get All Active Task of Email : {}",email);
-        return repository.findAll()
-                .stream().filter(i->i.isActive() && i.getUser().getEmail().equals(email))
+        logger.info("Service: Fetching all active tasks for email: {}", email);
+
+        List<TaskResponseDto> tasks = repository.findAll()
+                .stream()
+                .filter(task -> task.isActive() && task.getUser().getEmail().equals(email))
                 .map(mapper::toTaskResponseDto)
                 .collect(Collectors.toList());
+
+        logger.debug("Found {} tasks for email: {}", tasks.size(), email);
+        return tasks;
     }
 
     @CachePut(value = "tasks", key = "#dto.userEmail")
     @Transactional
     public TaskResponseDto add(TaskDto dto) throws TaskException{
-        logger.info("Service : Add Task : {}",dto);
-        Task task = mapper.toTask(dto);
-        Optional<User> userOpt =  userRepository.findByEmail(dto.userEmail());
-        if(userOpt.isPresent()) {
-            User user = userOpt.get();
-            task.setUser(user);
-            task.setCreatedAt(LocalDateTime.now());
-            task.setActive(true);
+        logger.info("Service: Adding task for user: {}", dto.userEmail());
 
-            Task saveTask = repository.save(task);
-            return mapper.toTaskResponseDto(saveTask);
+        Optional<User> userOpt = userRepository.findByEmail(dto.userEmail());
+        if (userOpt.isEmpty()) {
+            logger.error("Task creation failed: No user found with email: {}", dto.userEmail());
+            throw new TaskException("Something went wrong. Please try again.");
         }
-        throw new TaskException("Something went wrong. Please try again.");
+
+        Task task = mapper.toTask(dto);
+        User user = userOpt.get();
+        task.setUser(user);
+        task.setCreatedBy(user.getEmail());
+        task.setCreatedAt(LocalDateTime.now());
+        task.setActive(true);
+
+        Task savedTask = repository.save(task);
+        logger.debug("Task successfully created with ID: {}", savedTask.getId());
+        return mapper.toTaskResponseDto(savedTask);
     }
 
     @CachePut(value = "tasks", key = "#email + ':' + #taskId")
     @Transactional
     public TaskResponseDto update(Integer taskId,String email,TaskDto dto) throws TaskException{
-        logger.info("Service : Update Task : {}",dto);
-        Optional<Task> taskOpt = repository.findById(taskId);
-        if(taskOpt.isPresent() && taskOpt.get().getUser() == null){
-            logger.error("Service : Error in Task Id : {}, Task : {} ",taskId,dto,TaskException.class);
-            throw new TaskException("Cannot update task: user does not exist");
-        }
-        if(taskOpt.isPresent() && taskOpt.get().isActive() && taskOpt.get().getUser().getEmail().equals(email)){
-            Task task = taskOpt.get();
-            task.setPriority(dto.priority());
-            task.setTitle(dto.title());
-            task.setDescription(dto.description());
-            task.setStatus(dto.status());
-            task.setModifiedAt(LocalDateTime.now());
+        logger.info("Service: Updating task ID: {} for email: {}", taskId, email);
 
-            Task savedTask = repository.save(task);
-            return mapper.toTaskResponseDto(savedTask);
+        Optional<Task> taskOpt = repository.findById(taskId);
+        if (taskOpt.isEmpty()) {
+            logger.warn("Update failed: Task not found with ID: {}", taskId);
+            throw new TaskException("Task not found.");
         }
-        throw new TaskException("Something went wrong. Please try again.");
+
+        Task task = taskOpt.get();
+
+        if (!task.isActive()) {
+            logger.warn("Update failed: Task ID {} is inactive", taskId);
+            throw new TaskException("Cannot update inactive task.");
+        }
+
+        if (task.getUser() == null || !task.getUser().getEmail().equals(email)) {
+            logger.warn("Update failed: Task ID {} does not belong to user {}", taskId, email);
+            throw new TaskException("Cannot update task: unauthorized access");
+        }
+
+        task.setPriority(dto.priority());
+        task.setTitle(dto.title());
+        task.setDescription(dto.description());
+        task.setStatus(dto.status());
+        task.setModifiedAt(LocalDateTime.now());
+
+        Task updatedTask = repository.save(task);
+        logger.debug("Task updated successfully: ID = {}", updatedTask.getId());
+        return mapper.toTaskResponseDto(updatedTask);
     }
 
     @Transactional
     public boolean delete(Integer taskId,String email){
-        logger.info("Service : Delete Task : {}, and email : {}",taskId,email);
+        logger.info("Service: Deleting task ID: {} for user: {}", taskId, email);
+
         Optional<Task> taskOpt = repository.findById(taskId);
-        if(taskOpt.isPresent() && taskOpt.get().getUser().getEmail().equals(email)){
-            Task task = taskOpt.get();
-            task.setActive(false);
-            task.setModifiedAt(LocalDateTime.now());
-            Task deleteTask = repository.save(task);
-            return true;
+        if (taskOpt.isEmpty()) {
+            logger.warn("Delete failed: Task ID {} not found", taskId);
+            return false;
         }
-        return false;
+
+        Task task = taskOpt.get();
+
+        if (task.getUser() == null || !task.getUser().getEmail().equals(email)) {
+            logger.warn("Delete failed: Task ID {} does not belong to user {}", taskId, email);
+            return false;
+        }
+
+        task.setActive(false);
+        task.setModifiedAt(LocalDateTime.now());
+        repository.save(task);
+
+        logger.debug("Task soft-deleted successfully: ID = {}", taskId);
+        return true;
     }
     @Cacheable(value = "tasks", key = "#email + ':' + #status")
     public List<TaskResponseDto> getByStatus(Status status,String email){
-        logger.info("Service : Get All Active Task Based on Status : {} and Email : {}",status,email);
-        return repository.findByStatus(status)
-                .stream().filter(i->i.isActive() && i.getUser().equals(email))
+        logger.info("Service: Fetching tasks with status: {} for email: {}", status, email);
+
+        List<TaskResponseDto> tasks = repository.findByStatus(status)
+                .stream()
+                .filter(task -> task.isActive() && task.getUser().getEmail().equals(email))
                 .map(mapper::toTaskResponseDto)
                 .collect(Collectors.toList());
+
+        logger.debug("Found {} tasks with status={} for user={}", tasks.size(), status, email);
+        return tasks;
     }
     @Cacheable(value = "tasks", key = "#email + ':' + #priority")
     public List<TaskResponseDto> getByPriority(Priority priority,String email){
-        logger.info("Service : Get All Active Task Based on Priority : {} and Email : {}",priority,email);
-        return repository.findByPriority(priority)
-                .stream().filter(i->i.isActive() && i.getUser().getEmail().equals(email))
+        logger.info("Service: Fetching tasks with priority: {} for email: {}", priority, email);
+
+        List<TaskResponseDto> tasks = repository.findByPriority(priority)
+                .stream()
+                .filter(task -> task.isActive() && task.getUser().getEmail().equals(email))
                 .map(mapper::toTaskResponseDto)
                 .collect(Collectors.toList());
+
+        logger.debug("Found {} tasks with priority={} for user={}", tasks.size(), priority, email);
+        return tasks;
     }
 }

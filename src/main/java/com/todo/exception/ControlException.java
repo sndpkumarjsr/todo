@@ -19,57 +19,69 @@ import java.util.Map;
 @RestControllerAdvice
 public class ControlException {
 
-    private static Logger logger = LoggerFactory.getLogger(ControlException.class);
+    private static final Logger logger = LoggerFactory.getLogger(ControlException.class);
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<?> handleMethodArgumentNotValidException(MethodArgumentNotValidException exp){
+    public ResponseEntity<?> handleMethodArgumentNotValidException(MethodArgumentNotValidException ex){
+        logger.warn("Validation error: {}", ex.getMessage());
         Map<String,String> errors = new HashMap<>();
-        exp.getBindingResult().getAllErrors().forEach((error) -> {
+        ex.getBindingResult().getAllErrors().forEach((error) -> {
             String fieldName = ((FieldError)error).getField();
             String errorMessage = error.getDefaultMessage();
             errors.put(fieldName,errorMessage);
         });
         return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
     }
-//
-//    @ExceptionHandler(UnexpectedTypeException.class)
-//    public ResponseEntity<String> handleUnexpectedTypeException(UnexpectedTypeException ex) {
-//        return new ResponseEntity<>("Validation Error: " + ex.getMessage(), HttpStatus.BAD_REQUEST);
-//    }
+
+    @ExceptionHandler(UnexpectedTypeException.class)
+    public ResponseEntity<String> handleUnexpectedTypeException(UnexpectedTypeException ex) {
+        logger.error("Unexpected validation type: {}", ex.getMessage(), ex);
+        return new ResponseEntity<>("Validation Error: " + ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<String> handleHttpMessageNotReadableException(HttpMessageNotReadableException ex) {
+        logger.error("Malformed request body: {}", ex.getMessage(), ex);
         return new ResponseEntity<>("Validation Error: " + ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(UserException.class)
-    public ResponseEntity<APIResponseMessage> handleUserException(UserException exp){
-        logger.error("Exception : Error in User : {}",exp.getMessage(),UserException.class);
-        if(exp.getMessage().equals("Invalid Credentials")){
-            APIResponseMessage responseMessage = new APIResponseMessage().builder()
-                    .message(exp.getMessage())
-                    .status(HttpStatus.UNAUTHORIZED)
-                    .code(HttpStatusCode.valueOf(401))
-                    .build();
-            return new ResponseEntity<>(responseMessage,HttpStatus.UNAUTHORIZED);
-        }else {
-            APIResponseMessage responseMessage = new APIResponseMessage().builder()
-                    .message(exp.getMessage())
-                    .status(HttpStatus.BAD_REQUEST)
-                    .code(HttpStatusCode.valueOf(400))
-                    .build();
-            return new ResponseEntity<>(responseMessage,HttpStatus.BAD_REQUEST);
-        }
+    public ResponseEntity<APIResponseMessage> handleUserException(UserException ex){
+        HttpStatus status = ex.getMessage().equalsIgnoreCase("Invalid Credentials")
+                ? HttpStatus.UNAUTHORIZED
+                : HttpStatus.BAD_REQUEST;
+
+        logger.error("UserException: {}", ex.getMessage(), ex);
+
+        APIResponseMessage response = APIResponseMessage.builder()
+                .message(ex.getMessage())
+                .status(status)
+                .code(HttpStatusCode.valueOf(status.value()))
+                .build();
+
+        return new ResponseEntity<>(response, status);
     }
 
     @ExceptionHandler(TaskException.class)
-    public ResponseEntity<APIResponseMessage> handleTaskException(TaskException exp){
-        logger.error("Exception : Error in Task : {}",exp.getMessage(),TaskException.class);
+    public ResponseEntity<APIResponseMessage> handleTaskException(TaskException ex){
+        logger.error("TaskException: {}", ex.getMessage(), ex);
         APIResponseMessage responseMessage = new APIResponseMessage().builder()
-                .message(exp.getMessage())
+                .message(ex.getMessage())
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .code(HttpStatusCode.valueOf(500))
                 .build();
         return new ResponseEntity<>(responseMessage,HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<APIResponseMessage> handleGenericException(Exception ex) {
+        logger.error("Unhandled exception: {}", ex.getMessage(), ex);
+
+        APIResponseMessage response = APIResponseMessage.builder()
+                .message("Something went wrong. Please contact support.")
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .code(HttpStatusCode.valueOf(500))
+                .build();
+
+        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }
